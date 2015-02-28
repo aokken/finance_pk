@@ -14,5 +14,7 @@ def main():
         print "'{0}' : {{'description' : '{1}', 'chars' : '{2}'}},".format(op[0], op[1], op[2])
     print "}"
     
+    options_file.close()
+    
 if __name__ == '__main__':
     main()
