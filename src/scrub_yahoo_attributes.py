@@ -11,7 +11,7 @@ def main():
     
     print "{"
     for op in reader:
-        print "'%s' : {'description' : '%s', 'chars' : '%s' },"%(op[0], op[1], op[2])
+        print "'{0}' : {{'description' : '{1}', 'chars' : '{2}'}},".format(op[0], op[1], op[2])
     print "}"
     
 if __name__ == '__main__':

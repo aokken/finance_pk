@@ -110,7 +110,7 @@ class Yahoo_Finance(object):
         '''
         
     def _request(self, symbol, stat):
-        url = 'http://finance.yahoo.com/d/quotes.csv?s=%s&f=%s' % (symbol, stat)
+        url = 'http://finance.yahoo.com/d/quotes.csv?s={}&f={}'.format(symbol, stat) 
         req = Request(url)
         resp = urlopen(req)
         return str(resp.read().decode('utf-8').strip())
@@ -122,11 +122,11 @@ class Yahoo_Finance(object):
             if options.has_key(a):
                 query = query + options[a]['chars']
             else:
-                raise Exception("Requested key, '%s', not defined!"%a)
+                raise Exception("Requested key, '{}', not defined!".format(a))
                 
         values = self._request(symbol, query).split(',')
         if (values[1] == '"N/A"'):
-            raise Exception("Yahoo returned N/A; check symbol %s"%symbol)
+            raise Exception("Yahoo returned N/A; check symbol {}".format(symbol))
         
         return {attrib: val for attrib, val in zip(args, values)}
             
@@ -152,7 +152,7 @@ class Yahoo_Finance(object):
                             'ignore': '.csv',
                             })
         
-        url = 'http://ichart.yahoo.com/table.csv?%s' % params
+        url = 'http://ichart.yahoo.com/table.csv?{}'.format(params)
         req = Request(url)
         resp = urlopen(req)
         content = str(resp.read().decode('utf-8').strip())
@@ -182,8 +182,8 @@ class Yahoo_Finance(object):
         
 if __name__ == "__main__":
     y = Yahoo_Finance()
-    r = y.get_stats('GOOG', 'YearRange', 'DilutedEPS')
-    #r = y.get_eod_prices('GOOG', date(2014,1,1), date.today())
+    #r = y.get_stats('GOOG', 'Ask', 'DilutedEPS')
+    r = y.get_eod_prices('GOOG', date(2015,1,1), date.today())
     print r
     pass
         
