@@ -5,7 +5,7 @@ Created on Jan 27, 2014
 '''
 
 from datetime import date
-from urllib2 import Request, urlopen
+from urllib2 import Request, urlopen, URLError, HTTPError
 from urllib import urlencode
 
 # TODO: Put these in a database some day
@@ -113,6 +113,7 @@ class Yahoo_Finance(object):
         url = 'http://finance.yahoo.com/d/quotes.csv?s={}&f={}'.format(symbol, stat) 
         req = Request(url)
         resp = urlopen(req)
+            
         return str(resp.read().decode('utf-8').strip())
         
     def get_stats(self, symbol, *args):

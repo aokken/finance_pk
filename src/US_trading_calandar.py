@@ -7,27 +7,29 @@ from datetime import date, datetime, timedelta
 from dateutil import rrule, easter
 
 class TradingDays:
-    """This class defines the days that the US stock exchange is open. Defined dates are
-    for the past 2 year to plus 10 years"""
+    """This class defines the days that the US stock exchange is open."""
     
     # Holidays with fixed [month, day] 
     month_day_constants = [[1, 1],
                            [7, 4],
                            [12, 25]]
     
-    def __init__(self):
-        year = date.today().year
+    def __init__(self, year_range = None):
+        if(year_range is None):
+            year = date.today().year
+            start_year = date.today().year - 2
+            stop_year = date.today().year + 10
+        else:
+            #TODO: do some error checking on input
+            start_year = year_range[0]
+            stop_year = year_range[1]
             
         r = rrule.rrule(rrule.DAILY,
                         byweekday=[rrule.MO, rrule.TU, rrule.WE, rrule.TH, rrule.FR],
-                        dtstart = datetime(year-2, 1, 1, 0, 0, 0))
+                        dtstart = datetime(start_year, 1, 1, 0, 0, 0))
         
         rs = rrule.rruleset()
-        rs.rrule(r)
-        
-        start_year = date.today().year - 2
-        stop_year = date.today().year + 10
-        
+        rs.rrule(r)     
         
         # Need to exclude New Years, MLK day, Washington's Birthday, Good Friday, Memorial Day,
         # 4th of July, Labor Day, Thanksgiving, and Christmas
@@ -105,13 +107,22 @@ class TradingDays:
             
         return [h.date() for h in self.rule.between(start, end)]
     
+    def is_trading_day(self, d = date.today()):
+        if(isinstance(d, datetime)):
+            d = datetime.combine(d.date(), datetime.min.time())
+        elif (isinstance(d, date)):
+            d = datetime.combine(d, datetime.min.time())
+
+        return d in self.rule
+    
     
 if __name__ == '__main__':
     calandar = TradingDays()
-    n = calandar.last_trading_day()
+    #n = calandar.last_trading_day(4026)
       
-    b = calandar.get_trading_days(datetime(2014, 1, 1, 0, 0, 0), date(2015, 1, 10))
-    print "Next Day: %s"%n
+    #b = calandar.get_trading_days(datetime(4026, 1, 1, 0, 0, 0), date(4026, 12, 10))
+    i = calandar.is_trading_day(datetime(2015,3,2, 1, 3, 9))
+    print "Is Trading Day: %s"%i
     
     
 

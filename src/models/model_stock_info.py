@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Enum, Float, Integer, Date, ForeignKey, func
+from sqlalchemy import Column, String, Enum, Float, Integer, Date, ForeignKey, func, \
+                    orm
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql.schema import UniqueConstraint
@@ -14,10 +15,6 @@ class Security(Base):
     symbol = Column(String(8), nullable=False)
     name = Column(String(50), nullable=False)
     exchange = Column(String(20), nullable=False)  
-    eod_prices = relationship("EOD_Entry", backref=backref('securities'))
-    splits = relationship("SplitsEntry", backref=backref('securities'))
-    dividends = relationship("DividendEntry", backref=backref('securities'))
-    
     
     __table_args__ = (UniqueConstraint('symbol', 'exchange', name='_symbol_exchange_constraint'),
                      )
@@ -26,18 +23,61 @@ class Security(Base):
         self.exchange = exchange
         self.name = name
         
-    def add_eod_entry(self, session, observation):
-        entry = EOD_Entry(security_id = self.id,
-                          date = observation['date'],
-                          open = observation['open'],
-                          close = observation['close'],
-                          high = observation['high'],
-                          low = observation['low'])
-        session.add(entry)
+    @staticmethod
+    def get_security(session, symbol):
+        """Static method to return a security.
+           INPUT: ORM session, symbol
+           OUTPUT: Security class object or None if does not exist"""
+        q = session.query(Security).filter(Security.symbol == symbol)
+        if (q.count() > 0):
+            return q.first()
+        else:
+            return None
         
-    def last_eod_entry_date(self, session):
-        return session.query(self.eod_prices.date).\
-                filter(self.eod_prices.date==func.max(self.eod_prices.date).select()).all
+    def add_eod_history(self, session, history, update = False):
+        for entry in history:
+            self.add_eod_entry(session, entry, update)
+        
+    def add_eod_entry(self, session, observation, update = False):
+        entry = None
+        if (update == True):
+            entry = self.get_eod_entry(observation['date'])
+        
+        if (entry is not None and update == True):
+            entry.open = observation['open']
+            entry.close = observation['close']
+            entry.high = observation['high']
+            entry.low = observation['low']
+            entry.volume = observation['volume']
+        else:
+            entry = EOD_Entry(security_id = self.id,
+                              date = observation['date'],
+                              open = observation['open'],
+                              close = observation['close'],
+                              high = observation['high'],
+                              low = observation['low'],
+                              volume = observation['volume'])
+            session.add(entry)
+    
+    def first_eod_entry(self):
+        """Returns the earliest EOD entry from security"""
+        return self.eod_entries.order_by(EOD_Entry.date).first()
+    
+    def last_eod_entry(self):
+        """Returns the lastest EOD entry from security"""
+        return self.eod_entries.order_by(EOD_Entry.date.desc()).first()
+    
+    def get_eod_entry(self, date):
+        """Returns EOD entry of specified date"""
+        return self.eod_entries.filter(EOD_Entry.date == date).first()
+                
+    def clear_eod_entries(self, session):
+        """Delete all EOD entries"""
+        eod_table = self.eod_entries.all()
+        
+        for entry in eod_table:
+            session.delete(entry)
+        
     
     
 class SecurityMixin(object):
@@ -49,12 +89,21 @@ class SecurityMixin(object):
     
     @declared_attr
     def security_id(cls):
-        return Column(Integer, ForeignKey("securities.id"), nullable=False)
+        return Column(Integer, 
+                      ForeignKey("securities.id", onupdate="CASCADE", ondelete="CASCADE"), 
+                      nullable=False)
     
     @declared_attr
     def security(cls):
         return relationship(Security, 
-                            primaryjoin=lambda: Security.id==cls.security_id )
+                            primaryjoin=lambda: Security.id==cls.security_id,
+                            backref = backref(cls.__tablename__,
+                                              uselist = True,
+                                              single_parent=True,
+                                              cascade="all, delete-orphan",
+                                              passive_deletes=True,
+                                              lazy='dynamic')   
+                            )
         
     
 class EOD_Entry(Base, SecurityMixin):
@@ -65,6 +114,7 @@ class EOD_Entry(Base, SecurityMixin):
     close = Column(Float, nullable=False)
     high = Column(Float, nullable=False)
     low = Column(Float, nullable=False)
+    volume = Column(Integer, nullable=False)
     
     __table_args__ = (UniqueConstraint('security_id', 'date', name='_security_date_constraint'),)
     
