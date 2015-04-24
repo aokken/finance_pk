@@ -27,12 +27,12 @@ class Security(Base):
     def get_security(session, symbol):
         """Static method to return a security.
            INPUT: ORM session, symbol
-           OUTPUT: Security class object or None if does not exist"""
+           OUTPUT: Security class object or raise name error if does not exist"""
         q = session.query(Security).filter(Security.symbol == symbol)
         if (q.count() > 0):
             return q.first()
         else:
-            return None
+            raise NameError("No security found for '{}'".format(symbol))
         
     def add_eod_history(self, session, history, update = False):
         for entry in history:
@@ -77,6 +77,12 @@ class Security(Base):
         
         for entry in eod_table:
             session.delete(entry)
+            
+    def eod_entries_dates(self, start_date, end_date):
+        """Get EOD entries between two dates"""
+        return self.eod_entries. \
+               filter(EOD_Entry.date >= start_date, EOD_Entry.date <= end_date).\
+               order_by(EOD_Entry.date)
         
     
     
