@@ -4,8 +4,8 @@ Created on Jan 31, 2014
 @author: aaron
 '''
 from datetime import date, datetime, timedelta
-from dateutil import rrule, easter
-
+from dateutil import rrule, easter, relativedelta
+from decorators import decorate_date_args
 class TradingDays:
     """This class defines the days that the US stock exchange is open."""
     
@@ -14,22 +14,25 @@ class TradingDays:
                            [7, 4],
                            [12, 25]]
     
-    def __init__(self, year_range = None):
-        if(year_range is None):
-            year = date.today().year
-            start_year = date.today().year - 2
-            stop_year = date.today().year + 10
-        else:
-            #TODO: do some error checking on input
-            start_year = year_range[0]
-            stop_year = year_range[1]
+    @decorate_date_args('start_date', 'end_date')
+    def __init__(self, start_date = None, end_date=None):
+        if start_date is None:
+            start_date = datetime.today() - relativedelta.relativedelta(years=+2)
+            
+        if end_date is None:
+            end_date = start_date + relativedelta.relativedelta(years=10)
+            
+        [d.replace(hour=0, minute=0, second=0, microsecond=0) for d in (start_date, end_date)]
             
         r = rrule.rrule(rrule.DAILY,
                         byweekday=[rrule.MO, rrule.TU, rrule.WE, rrule.TH, rrule.FR],
-                        dtstart = datetime(start_year, 1, 1, 0, 0, 0))
+                        dtstart = start_date)
         
         rs = rrule.rruleset()
         rs.rrule(r)     
+        
+        start_year = start_date.year
+        stop_year = end_date.year
         
         # Need to exclude New Years, MLK day, Washington's Birthday, Good Friday, Memorial Day,
         # 4th of July, Labor Day, Thanksgiving, and Christmas
@@ -98,26 +101,20 @@ class TradingDays:
     def last_trading_day(self):
         return self.rule.before(datetime.today(), True).date()
     
-    def get_trading_days(self, start, end):
-        if (isinstance(start, date)):
-            start = datetime.combine(start, datetime.min.time())
-         
-        if (isinstance(end, date)):
-            end = datetime.combine(end, datetime.min.time())
-            
-        return [h.date() for h in self.rule.between(start, end)]
+    @decorate_date_args('start_date', 'end_date')
+    def get_trading_days(self, start_date=None, end_date=None):    
+        return [h.date() for h in self.rule.between(start_date, end_date)]
     
-    def is_trading_day(self, d = date.today()):
-        if(isinstance(d, datetime)):
-            d = datetime.combine(d.date(), datetime.min.time())
-        elif (isinstance(d, date)):
-            d = datetime.combine(d, datetime.min.time())
-
-        return d in self.rule
+    @decorate_date_args('in_date')
+    def is_trading_day(self, in_date = date.today()):
+        return in_date in self.rule
+    
+    def __getitem__(self,attr):
+        return self.rule[attr]
     
     
 if __name__ == '__main__':
-    calandar = TradingDays()
+    calandar = TradingDays(start_date="2015/01/01")
     #n = calandar.last_trading_day(4026)
       
     #b = calandar.get_trading_days(datetime(4026, 1, 1, 0, 0, 0), date(4026, 12, 10))

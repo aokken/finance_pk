@@ -5,7 +5,7 @@ from sqlalchemy.orm import relationship, backref
 from sqlalchemy.sql.schema import UniqueConstraint
 
 from models import Base
-
+from decorators import decorate_date_args
 
 class Security(Base):
     """This is the basic class for each stock, bond. All price objects
@@ -67,6 +67,7 @@ class Security(Base):
         """Returns the lastest EOD entry from security"""
         return self.eod_entries.order_by(EOD_Entry.date.desc()).first()
     
+    @decorate_date_args(2)  
     def get_eod_entry(self, date):
         """Returns EOD entry of specified date"""
         return self.eod_entries.filter(EOD_Entry.date == date).first()
@@ -78,11 +79,22 @@ class Security(Base):
         for entry in eod_table:
             session.delete(entry)
             
-    def eod_entries_dates(self, start_date, end_date):
+    @decorate_date_args('start_date', 'end_date')  
+    def eod_entries_dates(self, start_date=None, end_date=None):
         """Get EOD entries between two dates"""
-        return self.eod_entries. \
-               filter(EOD_Entry.date >= start_date, EOD_Entry.date <= end_date).\
-               order_by(EOD_Entry.date)
+        
+        if start_date is None and end_date is None:
+            q = self.eod_entries.order_by(EOD_Entry.date)
+        elif start_date is None and end_date is not None:
+            q = self.eod_entries.filter(EOD_Entry.date <= end_date).order_by(EOD_Entry.date)
+        elif start_date is not None and end_date is None:
+            q = self.eod_entries.filter(EOD_Entry.date >= start_date).order_by(EOD_Entry.date)
+        else:
+            q = self.eod_entries.\
+                filter(EOD_Entry.date >= start_date, EOD_Entry.date <= end_date).\
+                order_by(EOD_Entry.date)
+        
+        return q
         
     
     
